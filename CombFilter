@@ -1,0 +1,22 @@
+desc:Comb filter
+// http://christianfloisand.wordpress.com/2012/09/04/digital-reverberation/
+
+slider1:440<20,10000,1>Freq [Hz]
+slider2:1<0.1,5,0.1>Reverb Time [Sec]
+slider3:50<0,100,1>Wet/Dry [%]
+
+@slider
+dly = srate / slider1;
+wet = slider3 / 100;
+g = 0.001 ^ (1 / slider1 / slider2);
+
+@sample
+outL = bufpos[0];
+outR = bufpos[1];
+
+bufpos[0] = spl0 + g * outL;
+bufpos[1] = spl1 + g * outR;
+
+spl0 = spl0 * (1 - wet) + outL * wet; 
+spl1 = spl1 * (1 - wet) + outR * wet;
+bufpos = bufpos > 2*dly ? 0 : bufpos + 1;
