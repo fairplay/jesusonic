@@ -1,0 +1,28 @@
+desc:Karplus - Strong
+// Simplified syn_pluck by ccernn (https://sites.google.com/site/ccernnaudio/js-plugins)
+slider1:0.8<0.8,0.99,0.01>Damp
+
+@slider
+damp = slider1;
+
+@block
+  while (
+    midirecv(ts,msg1,msg23) ? (
+      m = msg1 & 240;
+      (m == 9*16) ? (
+        note = msg23 & 127;
+        vel  = (msg23/256) | 0;
+        vol  = vel/127;
+        freq = 440 * pow(2.0,(note-69.0)/12.0);
+        dly  = srate/freq;
+        noi = dly;
+      ); // noteon?
+      midisend(ts,msg1,msg23);
+    ); // midirecv
+  ); // whle
+
+@sample
+i[0] = noi > 0 ? rand(2)-1 : spl0 + damp * i[0];
+noi -= 1;
+i = i > dly ? 0 : i + 1;
+spl1 = spl0 = vol * i[0];
