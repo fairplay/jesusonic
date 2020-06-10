@@ -1,0 +1,62 @@
+desc:Midi Mask
+
+slider1:0<-1,12,1>1
+slider2:0<-1,12,1>2
+slider3:0<-1,12,1>3
+slider4:0<-1,12,1>4
+slider5:0<-1,12,1>5
+slider6:0<-1,12,1>6
+slider7:0<-1,12,1>7
+slider8:0<-1,12,1>8
+
+slider16:0<-1,12,1>Max for random
+slider17:8<1,8,1>Length
+slider18:0<0,1,1>Randomize
+slider19:0<0,8,1>Randomize each ...
+
+@init
+function randomize() (
+  i = 0;
+  loop(
+    8,
+    i+=1;
+    slider(i) = floor(rand(slider16 + 2)) - 1;
+  );
+);
+tick = 0;
+len = slider17;
+each = slider19;
+
+@slider
+
+len = slider17;
+each = slider19;
+
+slider18 == 1 ? (
+  randomize();
+  slider18 = 0;
+);
+
+@block
+  while (midirecv(offset, msg1, msg2, msg3)) (
+    (msg1 == $x90 && msg3 != 0) ? (
+      v = slider(tick + 1);
+      (v > -1) ? (
+        last_note = msg2 + v;
+        midisend(offset, msg1, last_note, msg3);
+      );
+      tick = (tick + 1) % len;
+      tick == 0 ? each -= 1;
+      each == 0 && slider19 != 0 ? (
+        randomize();
+        each = slider19;
+      );
+    ) : (
+      (msg1 == $x80 || (msg1 == $x90 && msg3 == 0)) ? (
+        last_note == msg2 + v ? midisend(offset, msg1, last_note, msg3);
+      ) : (
+        midisend(offset, msg1, msg2, msg3);
+      ) 
+    );
+  );
+

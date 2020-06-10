@@ -1,0 +1,80 @@
+desc:Pulse Sequencer I
+
+slider1: 1 <1,32,1> Pulses 1
+slider2: 1 <0,32,1> Pulses 2
+slider3: 0 <-4,4,1> Speed 1
+slider4: 0 <-4,4,1> Speed 2
+
+slider10:  0 <0,12,1{C,C#,D,D#,E,F,F#,G,G#,A,A#,B}> Base note
+slider11:  4 <-1,10,1> Octave
+slider12: 60 <0,127,1> Velocity 1
+slider13: 60 <0,127,1> Velocity 2
+
+
+//------------------------------------------------
+@init
+function fire_after(pulses, speed) (
+
+ pulse_beat = pow(2, -speed-1) * ts_num / pulses;
+ 
+ 60 * srate * pulse_beat / tempo;
+
+);
+
+note_off = 8 * 16;
+note_on = 9 * 16;
+
+pulses1 = slider1;
+pulses2 = slider2;
+speed1 = slider3;
+speed2 = slider4;
+
+octave = slider11;
+note = slider10 + (octave + 1) * 12;
+velocity1 = slider12;
+velocity2 = slider13;
+
+samples = 0;
+
+fire = fire_after(pulses1, speed1);
+phase = 1;
+
+//------------------------------------------------
+@slider
+
+pulses1 = slider1;
+pulses2 = slider2;
+speed1 = slider3;
+speed2 = slider4;
+
+octave = slider11;
+note = slider10 + (octave + 1) * 12;
+velocity1 = slider12;
+velocity2 = slider13;
+
+fire = fire_after(pulses1, speed1);
+phase = 1;
+
+//------------------------------------------------
+@block
+
+samples += samplesblock;
+
+while (samples >= fire) (
+  fire_offset = fire - (samples - samplesblock);
+
+  phase == 1 ? (
+    midisend(fire_offset, note_off, prevnote, 127);
+    midisend(fire_offset, note_on, note, velocity1);
+  ) : (
+    midisend(fire_offset, note_off, prevnote, 127);
+    midisend(fire_offset, note_on, note, velocity2); 
+  );
+  prevnote = note;
+  samples = samplesblock - fire_offset;
+  phase == 1 ? fire = fire_after(pulses1, speed1) : fire = fire_after(pulses2, speed2);
+
+  pulse += 1;
+  pulse > pulses1 ? phase = 2 : phase = 1;   
+  pulse %= (pulses1 + pulses2);
+);
