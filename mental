@@ -1,0 +1,95 @@
+desc:Mental
+
+slider1:220<60,6000,1>freq
+slider2:1<1,8,0.01>spread
+slider3:1<0.1,2,0.01>shrink
+
+slider11:0.1<0,1,0.01>a1
+slider12:0.1<0,1,0.01>a2
+slider13:0.1<0,1,0.01>a3
+slider14:0.1<0,1,0.01>a4
+
+slider21:0<-1,1,0.01>p1
+slider22:0<-1,1,0.01>p2
+slider23:0<-1,1,0.01>p3
+slider24:0<-1,1,0.01>p4
+
+@init
+
+function spike(z) (
+  z = 2 * z - 1;
+  1 - abs(z);
+);
+
+partials = 4;
+out2 = out1 = -0.5;
+
+itm1=itm2=otm1=otm2=0;
+
+/* arrays */
+x = 0;
+sgn = partials;
+freq = 2 * partials;
+a = 3 * partials;
+p = 4 * partials;
+
+i = 0; loop(partials, x[i] = 0; i += 1);
+i = 0; loop(partials, sgn[i] = 1; i += 1);
+
+freq[0] = slider1;
+spread = slider2;
+shrink = slider3;
+
+i = 0; loop(partials, 
+  freq[i + 1] = spread * freq[i];
+  spread *= shrink;
+  while (freq[i + 1] > srate / 4) (freq[i + 1] /= 2);
+  i += 1;
+);
+
+i = 0; loop(partials, a[i] = slider(11+i) / 20 / log(freq[i]); i += 1);
+i = 0; loop(partials, p[i] = (1 + slider(21+i)) * 0.5; i += 1);
+
+@slider
+
+freq[0] = slider1;
+spread = slider2;
+shrink = slider3;
+
+i = 0; loop(partials,
+  freq[i + 1] = spread * freq[i];
+  spread *= shrink;
+  while (freq[i + 1] > srate / 4) (freq[i + 1] /= 2);
+  i += 1;
+);
+
+i = 0; loop(partials, a[i] = slider(11+i) / 20 / log(freq[i]); i += 1);
+i = 0; loop(partials, p[i] = (1 + slider(21+i)) * 0.5; i += 1);
+
+@block
+
+@sample
+
+i=0; loop(partials,
+    pulse = spike(x[i] / srate);
+
+    x[i] += freq[i];
+    (x[i] > srate) ? (
+      x[i] %= srate;
+      sgn[i] *= -1;
+    );
+    
+    out1 += (1-p[i]) * a[i] * sgn[i] * pulse;
+    out2 += p[i] * a[i] * sgn[i] * pulse;
+
+    i += 1;
+);
+
+s0 = spl0 + out1 / partials / 1.414;
+s1 = spl1 + out2 / partials / 1.414;
+
+otm1=0.999*otm1 + s0 - itm1; itm1=s0; s0=otm1;
+otm2=0.999*otm2 + s1 - itm2; itm2=s1; s1=otm2;
+
+spl0 = s0;
+spl1 = s1;
