@@ -1,0 +1,117 @@
+desc:Resonator Waveguide
+import cookdsp.jsfx-inc
+
+slider1:3<0,9,1{MIDI,1,2,3,4,5,6,7,8,9}>Octave
+
+slider2:0<0,12,1{MIDI,C,C#,D,D#,E,F,F#,G,G#,A,A#,B}>I
+slider3:0<-24,24,1>II
+slider4:0<-24,24,1>III
+slider5:0<-24,24,1>IV
+slider6:0<-24,24,1>V
+
+slider7:1<0,1,0.05>I gain
+slider8:0<0,1,0.05>II gain
+slider9:0<0,1,0.05>III gain
+slider10:0<0,1,0.05>IV gain
+slider11:0<0,1,0.05>V gain
+
+slider12:1<0.01,30,0.01>Duration
+slider13:100<0,100,1>Wet
+
+@init
+function setWGs(n0, n1, n2, n3, n4, oct, dur) (
+  n_base = n0 + oct * 12;
+  c0.waveguide(mtof(n_base), dur);
+  c1.waveguide(mtof(n1 + n_base), dur);
+  c2.waveguide(mtof(n2 + n_base), dur);
+  c3.waveguide(mtof(n3 + n_base), dur);
+  c4.waveguide(mtof(n4 + n_base), dur);  
+);
+
+function resetWGs(n0, n1, n2, n3, n4, oct, dur) (
+  n_base = n0 + oct * 12;
+  c0.waveguide_set_freq(mtof(n_base));
+  c1.waveguide_set_freq(mtof(n1 + n_base));
+  c2.waveguide_set_freq(mtof(n2 + n_base));
+  c3.waveguide_set_freq(mtof(n3 + n_base));
+  c4.waveguide_set_freq(mtof(n4 + n_base));
+  
+  c0.waveguide_set_dur(dur);
+  c1.waveguide_set_dur(dur);
+  c2.waveguide_set_dur(dur);
+  c3.waveguide_set_dur(dur);
+  c4.waveguide_set_dur(dur);
+);
+
+ismidi = (slider2 == 0);
+ismidi_oct = (slider1 == 0);
+oct = slider1;
+
+n0 = slider2 - 1;
+n1 = slider3;
+n2 = slider4;
+n3 = slider5;
+n4 = slider6;
+
+g0 = slider7;
+g1 = slider8;
+g2 = slider9;
+g3 = slider10;
+g4 = slider11;
+
+dur = slider12;
+wet = slider13;
+
+setWGs(n0, n1, n2, n3, n4, oct, dur);
+
+@slider
+ismidi = (slider2 == 0);
+ismidi_oct = (slider1 == 0);
+oct = slider1;
+
+n0 = slider2 - 1;
+n1 = slider3;
+n2 = slider4;
+n3 = slider5;
+n4 = slider6;
+
+g0 = slider7;
+g1 = slider8;
+g2 = slider9;
+g3 = slider10;
+g4 = slider11;
+
+dur = slider12;
+wet = slider13;
+
+resetWGs(n0, n1, n2, n3, n4, oct, dur);
+
+@sample
+
+while (midirecv(offset, msg1, msg2, msg3)) (  
+  ismidi && msg1==$x90 && msg3!=0 ? (
+    n0 = msg2 % 12;
+    ismidi_oct ? oct = (msg2 - n0) / 12;
+    resetWGs(n0, n1, n2, n3, n4, oct, dur);
+  );
+  midisend(offset, msg1, msg2, msg3);
+);
+
+
+sig0 = c0.waveguide_do(spl0) * g0;
+sig1 = c0.waveguide_do(spl1) * g0;
+
+sig0 += c1.waveguide_do(spl0) * g1;
+sig1 += c1.waveguide_do(spl1) * g1;
+
+sig0 += c2.waveguide_do(spl0) * g2;
+sig1 += c2.waveguide_do(spl1) * g2;
+
+sig0 += c3.waveguide_do(spl0) * g3;
+sig1 += c3.waveguide_do(spl1) * g3;
+
+sig0 += c4.waveguide_do(spl0) * g4;
+sig1 += c4.waveguide_do(spl1) * g4;
+
+spl0 = spl0 + (sig0 - spl0) * wet / 100;
+spl1 = spl1 + (sig1 - spl1) * wet / 100;
