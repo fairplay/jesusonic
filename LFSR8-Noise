@@ -1,0 +1,85 @@
+desc:LFSR8-Noise
+
+slider1:1<1,127,1>C
+
+@init
+  function mtof(midinote) (
+    440.0 * pow(2.0, (midinote - 69) / 12.0);
+  );
+
+  function reset_c(val) (
+      len = 0;
+      i = 0; while (i < 8) (
+        c[i] = val & 1;
+        val = val >> 1;
+        c[i] == 1 ? len = i;
+        i += 1;
+      );
+      
+      len;
+  );
+
+  function reset_r(val) (
+      i = 7; while (i >= 0) (
+        r[i + 8] = val & 1;
+        val = val >> 1;
+        i -= 1;
+      );  
+  );
+
+  function shift(r, c, len)(
+    x = 0;
+    i = 0; loop(
+      len + 1,
+      x += c[i] * r[len + 7 - i];
+      i += 1;
+    );
+    
+    x = x % 2;
+    i = 0; loop(
+      len - 1,
+      r[i + 8] = r[i + 9];
+      i += 1;
+    );
+    
+    r[len + 7] = x;
+    
+    z = 0.5; out = 0; i = 0; loop(
+      len,
+      out += r[8 + i] * z;
+      i += 1;
+      z /= 2;
+    );
+    
+    2 * out - 1;
+  );
+
+  len = reset_c(2 * slider1 + 1);
+  reset_r(1);
+  
+  s = 0;
+
+
+@slider
+  len = reset_c(2 * slider1 + 1);
+
+@block
+  while (midirecv(offset, msg1, msg2, msg3)) (
+    (msg1 == $x90 && msg3 != 0) ? (
+      last_note = msg2;
+      freq = mtof(last_note);
+      midisend(offset, msg1, last_note, msg3);
+    ) : (
+      (msg1 == $x80 || (msg1 == $x90 && msg3 == 0)) ? (
+        last_note == msg2 ? midisend(offset, msg1, last_note, msg3);
+        freq = 0;
+      ) : (
+        midisend(offset, msg1, msg2, msg3);
+      ) 
+    );
+  );
+
+@sample
+  s > srate ? (v = shift(r, c, len); s -= srate;);
+  freq > 0 ? spl0 = spl1 = v;
+  s += freq;
